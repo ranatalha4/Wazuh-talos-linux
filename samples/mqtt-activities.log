@@ -1,0 +1,2 @@
+1 2026-10-12T12:37:47.785413Z app-worker-02 mqtt-activities mqtt-activities-795d965888-fnglj - - 2026-10-12T12:37:47.785Z  INFO 1 --- [mqtt] [ntLoopGroup-3-2] i.m.broker.metrics.MQTTMessageLogger     : Channel Inactive
+1 2026-10-12T12:37:48.170686Z app-worker-01 mqtt-activities mqtt-activities-f6fd59457-bg2rg - - 2026-10-12T12:37:48.169Z  INFO 1 --- [mqtt] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]

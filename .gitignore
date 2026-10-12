@@ -3,3 +3,4 @@
 archives.json
 alerts.json
 .env
+!samples/*.log

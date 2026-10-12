@@ -1,0 +1,1 @@
+1 2026-10-12T13:02:06.503587Z data-worker-04 kafka kafka-0 - - [2026-10-12 13:02:06,503] INFO [MetadataLog partition=__cluster_metadata-0, nodeId=1] Marking snapshot OffsetAndEpoch(offset=9702986, epoch=1) for deletion because its timestamp (1791205298348) is now (1791810126498) older than the

@@ -1,0 +1,2 @@
+1 2026-10-12T12:37:57.864602Z app-worker-01 kube-network-policies kube-flannel-dcgdf - - I1012 12:37:57.864315       1 networkpolicy.go:279] "Pod has limited all egress traffic" id=12852980 pod="app-ns/mqtt-activities-f6fd59457-bg2rg" policy="app-ns/default-deny-all"
+1 2026-10-12T12:37:57.864676Z app-worker-01 kube-network-policies kube-flannel-dcgdf - - 	[12852980] 198.51.100.68:53791 198.51.100.2:53 UDP

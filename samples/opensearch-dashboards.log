@@ -1,0 +1,2 @@
+Oct 12 12:40:01 wazuh-manager.example opensearch-dashboards[645285]: {"type":"log","@timestamp":"2026-10-12T12:40:01Z","tags":["error","plugins","wazuh","cron-scheduler"],"pid":645285,"message":"AxiosError: Request failed with status code 400"}
+Oct 12 12:45:00 wazuh-manager.example opensearch-dashboards[645285]: {"type":"log","@timestamp":"2026-10-12T12:45:00Z","tags":["info","plugins","wazuh","monitoring"],"pid":645285,"message":"Settings added to wazuh-monitoring-2026.42w index"}
