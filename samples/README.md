@@ -12,7 +12,7 @@ Sanitized lines captured from live Talos syslog traffic. Paste a line into `wazu
 | `postgres.log` | `talos-postgres-json` |
 | `prometheus.log` | `talos-prometheus` |
 | `redis.log` | `talos-redis` |
-| `kube-network-policies.log` | fallback `talos-syslog-fields`: shows message types not yet covered ("Pod has limited all egress traffic", tab-indented packet detail) |
+| `kube-network-policies.log` | line 1 `talos-network-policy-egress-limited`; line 2 `talos-network-policy-tuple` (`srcip`/`dstip`/`dstport`); line 3 `talos-network-policy-port-denied` → rule `100109` |
 | `opensearch-dashboards.log` | `osd-dashboard-log` (journald, not Talos syslog) |
 
 IPs use documentation ranges (192.0.2.0/24, 198.51.100.0/24). Hostnames, namespaces, and DB users are placeholders.
