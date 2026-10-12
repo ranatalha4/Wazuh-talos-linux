@@ -78,6 +78,42 @@
   <order>talos_host, talos_program, talos_pod, packet_id</order>
 </decoder>
 
+<!-- Packet 5-tuple: "\t[id] src:port dst:port PROTO" -> standard srcip/dstip fields (CDB lists, GeoIP work) -->
+<decoder name="talos-network-policy-tuple">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ kube-network-policies \S+ - -\s*(?:\xEF\xBB\xBF)?\s*\[\d+\] \S+:\d+ \S+:\d+ \w+</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?\s*\[(\d+)\] (\S+):(\d+) (\S+):(\d+) (\w+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, srcip, srcport, dstip, dstport, protocol</order>
+</decoder>
+
+<!-- "Pod has limited all egress traffic" id= pod= policy= -->
+<decoder name="talos-network-policy-egress-limited">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Pod has limited all egress traffic"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+) pod="([^"]*)" policy="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, src_pod, np_policy</order>
+</decoder>
+
+<!-- "Pod is not allowed to connect to port" id= pod= port= -->
+<decoder name="talos-network-policy-port-denied">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Pod is not allowed to connect to port"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+) pod="([^"]*)" port=(\d+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, src_pod, dstport</order>
+</decoder>
+
+<!-- Packet hexdump + " >" terminator (high klog verbosity): labelled so they don't inflate the fallback count -->
+<decoder name="talos-network-policy-dump">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ kube-network-policies \S+ - -\s*(?:\xEF\xBB\xBF)?\s*(?:[0-9a-f]{8}  [0-9a-f]{2} |>\s*$)</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -</regex>
+  <order>talos_host, talos_program, talos_pod</order>
+</decoder>
+
 <!-- ===== Services ===== -->
 <decoder name="talos-grafana">
   <parent>talos-syslog</parent>

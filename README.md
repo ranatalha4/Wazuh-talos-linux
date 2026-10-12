@@ -27,7 +27,7 @@ Wazuh Dashboard
 
 | Path | Contents |
 |---|---|
-| `decoders/talos_decoders.xml` | Parent `talos-syslog` + 22 children (network policies, Grafana, Kafka, kube-apiserver, Prometheus stack, MQTT, Redis, Traefik, Argo CD, PgBouncer, PostgreSQL JSON) + fallback |
+| `decoders/talos_decoders.xml` | Parent `talos-syslog` + 26 children (network policies incl. packet 5-tuple → `srcip`/`dstip`, Grafana, Kafka, kube-apiserver, Prometheus stack, MQTT, Redis, Traefik, Argo CD, PgBouncer, PostgreSQL JSON) + fallback |
 | `decoders/osd_dashboard_decoders.xml` | OpenSearch Dashboards request/log decoders |
 | `rules/talos_rules.xml` | Detection rules `100100–100153` |
 | `rules/wazuh_health_rules.xml` | `/var/ossec` disk ≥ 85% alert (`100120`) |
@@ -46,6 +46,8 @@ Wazuh Dashboard
 | 100102 | 10 | 50+ etcd connection errors in 5 min on one node | T1499 |
 | 100107 | 8 | Traefik request from outside allow-listed CIDRs | T1133 |
 | 100108 | 8 | 300+ network-policy drops in 60 s on one node | T1046 |
+| 100110 | 7 | 20+ egress-port denials in 60 s from one pod | T1046 |
+| 100111 | 10 | Pod denied egress to a control-plane/node port (etcd, apiserver, kubelet, Talos API, SSH) | T1613, T1210 |
 | 100132 | 8 | PgBouncer login from a non-cluster IP | T1078 |
 | 100133 | 8 | PgBouncer login with an unexpected DB user | T1078 |
 | 100135 | 10 | 5+ PgBouncer auth failures in 60 s from one IP | T1110.001 |
@@ -136,6 +138,9 @@ The count should fall to near zero for covered services. Anything left over is a
 | 8 | `decoder.name` can show the **parent** even when a child matched. | Validate by **field shape**: extracted fields present, fallback field absent |
 | 9 | `systemctl restart` was observed to keep **stale decoder/rule definitions**. | `stop` then `start` |
 | 10 | `logall_json` used for decoder work **fills the disk fast**. | Turn it on only temporarily, put `/var/ossec` on its own volume, and set index retention |
+| 11 | `<field name="dstport">` (or any **static** field: `srcip`, `dstip`, `srcport`, `dstport`, `srcuser`…) is **rejected on save**. | Use the dedicated option, e.g. `<dstport>` |
+| 12 | Static-field options like `<dstport>` matched `\d` **literally** in testing. | Use literals with `^…$\|` alternation, or check the value in a regex `<field>` on a dynamic field |
+| 13 | At high klog verbosity, `kube-network-policies` dumps every packet as **6–8 syslog lines** (header, `[id]` tuple, hex, `>`). Wazuh can't join them by `id`. | Lower the verbosity at source; alert from single self-contained lines |
 
 ---
 

@@ -65,6 +65,34 @@
     <group>talos,kubernetes,network,</group>
   </rule>
 
+  <!-- ===== kube-network-policies: egress port denied ===== -->
+  <!-- Note: no <dstport>\d</dstport> here - static-field options matched \d literally in testing. -->
+  <rule id="100109" level="0">
+    <if_sid>100100</if_sid>
+    <field name="talos_program">^kube-network-policies$</field>
+    <field name="src_pod">\S</field>
+    <match>Pod is not allowed to connect to port</match>
+    <description>Talos NetworkPolicy: $(src_pod) denied egress to port $(dstport).</description>
+    <group>talos,kubernetes,network,</group>
+  </rule>
+
+  <rule id="100110" level="7" frequency="20" timeframe="60" ignore="300">
+    <if_matched_sid>100109</if_matched_sid>
+    <same_field>src_pod</same_field>
+    <description>Talos NetworkPolicy: $(src_pod) hit 20+ egress denials in 60s - broken policy or pod probing.</description>
+    <mitre><id>T1046</id></mitre>
+    <group>talos,kubernetes,network,</group>
+  </rule>
+
+  <rule id="100111" level="10">
+    <if_sid>100109</if_sid>
+    <dstport>^22$|^2379$|^2380$|^6443$|^10250$|^10255$|^10257$|^10259$|^50000$</dstport>
+    <description>Talos NetworkPolicy: $(src_pod) tried to reach control-plane/node port $(dstport) - possible lateral movement.</description>
+    <mitre><id>T1613</id><id>T1210</id></mitre>
+    <group>talos,kubernetes,network,</group>
+  </rule>
+
+
 
  <!-- ===== pgbouncer (application DB access) ===== -->
 
