@@ -1,0 +1,19 @@
+<!-- OpenSearch Dashboards (journald) decoders. Install: /var/ossec/etc/decoders/ -->
+<!-- Parent: matches any opensearch-dashboards journald log -->
+<decoder name="osd-dashboard">
+  <program_name>^opensearch-dashboards$</program_name>
+</decoder>
+
+<decoder name="osd-dashboard-response">
+  <parent>osd-dashboard</parent>
+  <prematch type="pcre2">"type":"response"</prematch>
+  <regex type="pcre2">"req":\{"url":"([^"]*)","method":"(\w+)".*?"remoteAddress":"([^"]*)","userAgent":"([^"]*)","referer":"([^"]*)"\},"res":\{"statusCode":(\d+),"responseTime":(\d+),"contentLength":(\d+)\},"message":"([^"]*)"</regex>
+  <order>osd_url, osd_method, osd_src_ip, osd_user_agent, osd_referer, osd_status_code, osd_response_time_ms, osd_content_length, osd_message</order>
+</decoder>
+
+<decoder name="osd-dashboard-log">
+  <parent>osd-dashboard</parent>
+  <prematch type="pcre2">"type":"log"</prematch>
+  <regex type="pcre2">"tags":\[([^\]]*)\].*?"message":"([^"]*)"</regex>
+  <order>osd_tags, osd_message</order>
+</decoder>

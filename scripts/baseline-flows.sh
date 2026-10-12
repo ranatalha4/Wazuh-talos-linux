@@ -4,11 +4,11 @@
 #
 # Usage: sudo ./baseline-flows.sh [lines] [archives.json]
 # Set the field names to whatever your decoder extracts:
-#   SRC=src_pod DST=dst_pod DIR=direction ACT=action sudo -E ./baseline-flows.sh
+#   SRC=src_pod DST=dst_pod DIR=direction ACT=verdict sudo -E ./baseline-flows.sh
 set -u
 LINES="${1:-300000}"
 FILE="${2:-/var/ossec/logs/archives/archives.json}"
-SRC="${SRC:-src_pod}"; DST="${DST:-dst_pod}"; DIR="${DIR:-direction}"; ACT="${ACT:-action}"
+SRC="${SRC:-src_pod}"; DST="${DST:-dst_pod}"; DIR="${DIR:-direction}"; ACT="${ACT:-verdict}"
 
 tail -n "$LINES" "$FILE" | grep "\"$SRC\"" | awk -v s="$SRC" -v d="$DST" -v r="$DIR" -v a="$ACT" '
 function get(k,   m) { if (match($0, "\"" k "\":\"[^\"]*\"")) { m = substr($0, RSTART, RLENGTH); sub(/^"[^"]*":"/, "", m); sub(/"$/, "", m); return m } return "-" }

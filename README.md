@@ -27,13 +27,39 @@ Wazuh Dashboard
 
 | Path | Contents |
 |---|---|
-| `decoders/` | Parent `talos-syslog` decoder + per-service child decoders |
-| `rules/` | Detection rules (ID range `100100+`) |
+| `decoders/talos_decoders.xml` | Parent `talos-syslog` + 22 children (network policies, Grafana, Kafka, kube-apiserver, Prometheus stack, MQTT, Redis, Traefik, Argo CD, PgBouncer, PostgreSQL JSON) + fallback |
+| `decoders/osd_dashboard_decoders.xml` | OpenSearch Dashboards request/log decoders |
+| `rules/talos_rules.xml` | Detection rules `100100–100153` |
+| `rules/wazuh_health_rules.xml` | `/var/ossec` disk ≥ 85% alert (`100120`) |
 | `config/ossec-remote-syslog.xml` | `<remote>` block for receiving Talos syslog |
 | `config/ism-retention-policy.json` | Index retention for `wazuh-alerts-*` / `wazuh-archives-*` |
 | `scripts/baseline-flows.sh` | Build a flow baseline from `archives.json` (awk only, no Python) |
 | `scripts/leak-check.sh` | Pre-commit check for IPs, hostnames and credentials |
 | `samples/` | Sanitized sample logs for `wazuh-logtest` |
+
+---
+
+## Detections
+
+| Rule | Level | Detects | MITRE |
+|---|---|---|---|
+| 100102 | 10 | 50+ etcd connection errors in 5 min on one node | T1499 |
+| 100107 | 8 | Traefik request from outside allow-listed CIDRs | T1133 |
+| 100108 | 8 | 300+ network-policy drops in 60 s on one node | T1046 |
+| 100132 | 8 | PgBouncer login from a non-cluster IP | T1078 |
+| 100133 | 8 | PgBouncer login with an unexpected DB user | T1078 |
+| 100135 | 10 | 5+ PgBouncer auth failures in 60 s from one IP | T1110.001 |
+| 100142 | 12 | PostgreSQL superuser login over the network | T1078.003 |
+| 100143 | 10 | PostgreSQL login by an unknown user | T1078 |
+| 100144/45 | 8 | App user touching an unexpected database | T1078 |
+| 100147 | 12 | 5+ PostgreSQL failed logins in 2 min | T1110 |
+| 100148 | 8 | DDL (`CREATE/ALTER/DROP/TRUNCATE`) | T1565.001 |
+| 100150/52 | 10 | Role/privilege changes (statement log + pgaudit) | T1098 |
+| 100153 | 5 | PostgreSQL restart / config reload | n/a |
+
+Level-0 rules (`100100`, `100104`, `100106`, `100131`, `100149` …) are base classifiers and noise suppressors.
+
+PostgreSQL rules expect CloudNativePG JSON logs, `log_statement=ddl`, and pgaudit for `100152`.
 
 ---
 

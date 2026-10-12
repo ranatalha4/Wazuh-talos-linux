@@ -1,0 +1,228 @@
+<!-- Talos Linux / Kubernetes detection rules. Install: /var/ossec/etc/rules/
+     Replace the example CIDRs (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24) and DB user/db names with your own. -->
+
+<group name="talos,">
+
+  <rule id="100100" level="0">
+    <decoded_as>talos-syslog</decoded_as>
+    <description>Talos Linux syslog message received from $(talos_host).</description>
+    <group>talos,</group>
+  </rule>
+
+
+  <rule id="100101" level="2">
+    <if_sid>100100</if_sid>
+    <field name="talos_program">^kube-apiserver$</field>
+    <field name="kapi_message" type="pcre2">failed to connect to.*2379.*operation was canceled</field>
+    <description>Talos kube-apiserver ($(talos_host)): transient etcd dial cancellation (benign gRPC channel churn).</description>
+    <group>talos,kubernetes,etcd,</group>
+  </rule>
+
+  <rule id="100102" level="10" frequency="50" timeframe="300" ignore="600">
+    <if_matched_sid>100101</if_matched_sid>
+    <same_field>talos_host</same_field>
+    <description>Talos kube-apiserver ($(talos_host)): high-frequency etcd connection errors - possible real etcd connectivity issue.</description>
+    <mitre><id>T1499</id></mitre>
+    <group>talos,kubernetes,etcd,</group>
+  </rule>
+
+  <rule id="100103" level="1">
+    <if_sid>100100</if_sid>
+    <field name="talos_program">^kube-network-policies$</field>
+    <field name="verdict">^drop$</field>
+    <description>Talos kube-network-policies ($(talos_host)): packet denied/dropped by network policy.</description>
+    <group>talos,kubernetes,network,</group>
+  </rule>
+
+  <rule id="100106" level="0">
+    <if_sid>100100</if_sid>
+    <field name="traefik_clientip" type="pcre2">^203\.0\.113\.\d{1,3}$</field>
+    <description>Traefik traffic from known VPN/office ranges (allow-listed CIDRs).</description>
+  </rule>
+
+  <rule id="100107" level="8">
+    <if_sid>100100</if_sid>
+    <field name="traefik_clientip" negate="yes" type="pcre2">^203\.0\.113\.\d{1,3}$</field>
+    <description>Traefik traffic from unexpected source IP range — outside allow-listed CIDRs.</description>
+    <mitre>
+      <id>T1133</id>
+    </mitre>
+  </rule>
+
+  <rule id="100104" level="0">
+    <if_sid>100100</if_sid>
+    <location>^192\.0\.2\.10$|^198\.51\.100\.10$</location>
+    <description>Talos control-plane node event ($(talos_host)) from $(location).</description>
+    <group>talos,kubernetes,control-plane,</group>
+  </rule>
+
+
+  <rule id="100108" level="8" frequency="300" timeframe="60" ignore="300">
+    <if_matched_sid>100103</if_matched_sid>
+    <same_field>talos_host</same_field>
+    <description>Talos kube-network-policies ($(talos_host)): burst of network-policy drops (300+ in 60s) - possible scanning or broken policy.</description>
+    <mitre><id>T1046</id></mitre>
+    <group>talos,kubernetes,network,</group>
+  </rule>
+
+
+ <!-- ===== pgbouncer (application DB access) ===== -->
+
+
+  <rule id="100130" level="0">
+    <if_sid>100100</if_sid>
+    <field name="talos_program">^pgbouncer$</field>
+    <field name="pgb_tls">\S</field>
+    <description>pgbouncer: login to $(pgb_db) as $(pgb_user) from $(pgb_srcip).</description>
+    <group>talos,database,pgbouncer,</group>
+  </rule>
+
+  <rule id="100131" level="0">
+    <if_sid>100130</if_sid>
+    <field name="pgb_user">^pgbouncer$</field>
+    <description>pgbouncer: internal metrics login (ignored).</description>
+    <group>talos,database,pgbouncer,</group>
+  </rule>
+
+  <rule id="100132" level="8">
+    <if_sid>100130</if_sid>
+    <field name="pgb_srcip" type="pcre2" negate="yes">^192\.0\.2\.\d{1,3}$|^198\.51\.100\.\d{1,3}$|^unix</field>
+    <description>pgbouncer: DB login to $(pgb_db) as $(pgb_user) from non-cluster IP $(pgb_srcip).</description>
+    <mitre><id>T1078</id></mitre>
+    <group>talos,database,pgbouncer,</group>
+  </rule>
+
+  <rule id="100133" level="8">
+    <if_sid>100130</if_sid>
+    <field name="pgb_user" type="pcre2" negate="yes">^(app_user|svc_user|pgbouncer)$</field>
+    <description>pgbouncer: DB login to $(pgb_db) with unexpected user $(pgb_user) from $(pgb_srcip).</description>
+    <mitre><id>T1078</id></mitre>
+    <group>talos,database,pgbouncer,</group>
+  </rule>
+
+  <rule id="100134" level="5">
+    <if_sid>100100</if_sid>
+    <field name="talos_program">^pgbouncer$</field>
+    <field name="pgb_reason" type="pcre2">(?i)authentication failed|no such user|auth failed|SASL</field>
+    <description>pgbouncer: DB authentication failure for $(pgb_user) on $(pgb_db) from $(pgb_srcip).</description>
+    <mitre><id>T1110</id></mitre>
+    <group>talos,database,pgbouncer,authentication_failed,</group>
+  </rule>
+
+  <rule id="100135" level="10" frequency="5" timeframe="60" ignore="300">
+    <if_matched_sid>100134</if_matched_sid>
+    <same_field>pgb_srcip</same_field>
+    <description>pgbouncer: 5+ DB authentication failures in 60s from $(pgb_srcip) - possible brute force.</description>
+    <mitre><id>T1110.001</id></mitre>
+    <group>talos,database,pgbouncer,authentication_failures,</group>
+  </rule>
+
+
+</group>
+<!-- ===== PostgreSQL (CloudNativePG JSON logs) ===== -->
+<group name="talos,database,postgresql,">
+
+  <!-- Base: every PostgreSQL record (no alert) -->
+  <rule id="100140" level="0">
+    <if_sid>100100</if_sid>
+    <field name="logger">^postgres$</field>
+    <description>PostgreSQL ($(logging_pod)): $(record.message)</description>
+  </rule>
+
+  <!-- Successful login (baseline, no alert) -->
+  <rule id="100141" level="0">
+    <if_sid>100140</if_sid>
+    <field name="record.message" type="pcre2">^connection authorized:</field>
+    <description>PostgreSQL ($(logging_pod)): login user=$(record.user_name) db=$(record.database_name) from=$(record.connection_from)</description>
+  </rule>
+
+  <rule id="100142" level="12">
+    <if_sid>100141</if_sid>
+    <field name="record.user_name">^postgres$</field>
+    <field name="record.connection_from" type="pcre2" negate="yes">^\[local\]</field>
+    <description>PostgreSQL ($(logging_pod)): SUPERUSER login from network $(record.connection_from) to db $(record.database_name)</description>
+    <mitre><id>T1078.003</id></mitre>
+  </rule>
+
+  <rule id="100143" level="10">
+    <if_sid>100141</if_sid>
+    <field name="record.user_name" type="pcre2" negate="yes">^(postgres|cnpg_metrics_exporter|streaming_replica|cnpg_pooler_pgbouncer|app_user|svc_user)$</field>
+    <description>PostgreSQL ($(logging_pod)): login by UNKNOWN user $(record.user_name) to db $(record.database_name) from $(record.connection_from)</description>
+    <mitre><id>T1078</id></mitre>
+  </rule>
+
+  <rule id="100144" level="8">
+    <if_sid>100141</if_sid>
+    <field name="record.user_name">^app_user$</field>
+    <field name="record.database_name" type="pcre2" negate="yes">^app_db$</field>
+    <description>PostgreSQL ($(logging_pod)): app_user accessed unexpected db $(record.database_name)</description>
+    <mitre><id>T1078</id></mitre>
+  </rule>
+
+  <rule id="100145" level="8">
+    <if_sid>100141</if_sid>
+    <field name="record.user_name">^svc_user$</field>
+    <field name="record.database_name" type="pcre2" negate="yes">^svc_db$</field>
+    <description>PostgreSQL ($(logging_pod)): svc_user accessed unexpected db $(record.database_name)</description>
+    <mitre><id>T1078</id></mitre>
+  </rule>
+
+  <!-- Failed authentication + brute force -->
+  <rule id="100146" level="5">
+    <if_sid>100140</if_sid>
+    <field name="record.error_severity">^FATAL$</field>
+    <field name="record.message" type="pcre2">password authentication failed|no pg_hba\.conf entry|role ".+" does not exist|authentication failed</field>
+    <description>PostgreSQL ($(logging_pod)): failed login user=$(record.user_name) from $(record.connection_from): $(record.message)</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100147" level="12" frequency="5" timeframe="120" ignore="300">
+    <if_matched_sid>100146</if_matched_sid>
+    <same_field>logging_pod</same_field>
+    <description>PostgreSQL ($(logging_pod)): possible brute force - 5+ failed logins in 2 min</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <!-- DDL (log_statement=ddl) -->
+  <rule id="100148" level="8">
+    <if_sid>100140</if_sid>
+    <field name="record.message" type="pcre2">^statement: (CREATE|ALTER|DROP|TRUNCATE) </field>
+    <description>PostgreSQL ($(logging_pod)): DDL by $(record.user_name) on db $(record.database_name): $(record.message)</description>
+    <mitre><id>T1565.001</id></mitre>
+  </rule>
+
+  <rule id="100149" level="0">
+    <if_sid>100148</if_sid>
+    <field name="record.message" type="pcre2">^statement: CREATE EXTENSION (IF NOT EXISTS )?pgaudit</field>
+    <description>PostgreSQL ($(logging_pod)): CNPG pgaudit extension management (expected).</description>
+  </rule>
+
+  <rule id="100150" level="10">
+    <if_sid>100148</if_sid>
+    <field name="record.message" type="pcre2">^statement: (CREATE|ALTER|DROP) (ROLE|USER)</field>
+    <description>PostgreSQL ($(logging_pod)): ROLE change by $(record.user_name): $(record.message)</description>
+    <mitre><id>T1098</id></mitre>
+  </rule>
+
+  <!-- pgaudit -->
+  <rule id="100151" level="0">
+    <if_sid>100140</if_sid>
+    <field name="record.message" type="pcre2">^AUDIT: </field>
+    <description>PostgreSQL ($(logging_pod)): pgaudit record by $(record.user_name).</description>
+  </rule>
+
+  <rule id="100152" level="10">
+    <if_sid>100151</if_sid>
+    <field name="record.message" type="pcre2">^AUDIT: SESSION,\d+,\d+,ROLE,</field>
+    <description>PostgreSQL ($(logging_pod)): privilege/role change (pgaudit) by $(record.user_name): $(record.message)</description>
+    <mitre><id>T1098</id></mitre>
+  </rule>
+
+  <!-- Restart / config change -->
+  <rule id="100153" level="5">
+    <if_sid>100140</if_sid>
+    <field name="record.message" type="pcre2">database system is ready to accept connections|received SIGHUP|parameter ".+" changed to|terminating connection due to administrator command|database system is shut down</field>
+    <description>PostgreSQL ($(logging_pod)): restart/config event: $(record.message)</description>
+  </rule>
+
+</group>

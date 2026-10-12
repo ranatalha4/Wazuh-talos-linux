@@ -1,0 +1,186 @@
+<!-- Talos Linux syslog (RFC5424) decoders. Install: /var/ossec/etc/decoders/
+     All children point directly at talos-syslog. Order matters: specific first, fallback LAST. -->
+
+<decoder name="talos-syslog">
+  <prematch type="pcre2">^\d+ \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z </prematch>
+</decoder>
+
+<!-- ===== kube-network-policies ===== -->
+<decoder name="talos-network-policy-ingress-exempt">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Ingress NetworkPolicies does not apply"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id</order>
+</decoder>
+
+<decoder name="talos-network-policy-accepted">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Packet accepted by policy"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id</order>
+</decoder>
+
+<decoder name="talos-network-policy-allowed-dst">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Pod is allowed to connect to dst"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+) pod="([^"]*)" dst="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, src_pod, allowed_dst_ip</order>
+</decoder>
+
+<decoder name="talos-network-policy-verdict">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">verdict="\w+"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+).*verdict="(\w+)"</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, verdict</order>
+</decoder>
+
+<decoder name="talos-network-policy">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">srcPod="[^"]*" dstPod="[^"]*"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+) direction="(\w+)" srcPod="([^"]*)" dstPod="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, direction, src_pod, dst_pod</order>
+</decoder>
+
+<decoder name="talos-network-policy-sync-finished">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Finished syncing packet"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+) duration="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id, sync_duration</order>
+</decoder>
+
+<decoder name="talos-network-policy-sync-start">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Processing sync for packet"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id</order>
+</decoder>
+
+<decoder name="talos-network-policy-egress-exempt">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Egress NetworkPolicies does not apply"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id</order>
+</decoder>
+
+<decoder name="talos-network-policy-denied">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">"Packet denied by ingress policy"</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -.*id=(\d+)</regex>
+  <order>talos_host, talos_program, talos_pod, packet_id</order>
+</decoder>
+
+<!-- ===== Services ===== -->
+<decoder name="talos-grafana">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ grafana \S+ - -\s*(?:\xEF\xBB\xBF)?logger=</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?logger=(\S+).*level=(\w+) msg="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, gf_logger, gf_level, gf_message</order>
+</decoder>
+
+<decoder name="talos-kafka">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ kafka \S+ - -\s*(?:\xEF\xBB\xBF)?\[[\d\-\s:,]+\]</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?\[[\d\-\s:,]+\] (\w+) (.+)$</regex>
+  <order>talos_host, talos_program, talos_pod, kafka_level, kafka_message</order>
+</decoder>
+
+<decoder name="talos-kube-apiserver">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ kube-apiserver \S+ - -\s*(?:\xEF\xBB\xBF)?[EWI]\d{4}</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?([EWI])\d{4} \S+\s+\d+ (\S+\.go:\d+)\] (.+)$</regex>
+  <order>talos_host, talos_program, talos_pod, kapi_level, kapi_source, kapi_message</order>
+</decoder>
+
+<decoder name="talos-kube-prometheus-stack">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ kube-prometheus-stack \S+ - -\s*(?:\xEF\xBB\xBF)?ts=</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?ts=\S+ level=(\w+) caller=(\S+) msg="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, kps_level, kps_caller, kps_message</order>
+</decoder>
+
+<decoder name="talos-mqtt-activities">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ mqtt-activities \S+ - -\s*(?:\xEF\xBB\xBF)?\S+Z\s+\w+ \d+ ---</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?\S+Z\s+(\w+) \d+ --- .*?:\s*(.+)$</regex>
+  <order>talos_host, talos_program, talos_pod, mqtt_level, mqtt_message</order>
+</decoder>
+
+<decoder name="talos-prometheus">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ prometheus \S+ - -\s*(?:\xEF\xBB\xBF)?time=</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?time=\S+ level=(\w+) source=(\S+) msg="([^"]*)"</regex>
+  <order>talos_host, talos_program, talos_pod, prom_level, prom_source, prom_message</order>
+</decoder>
+
+<decoder name="talos-redis">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ redis \S+ - -\s*(?:\xEF\xBB\xBF)?\d+:[MSC] \d{2} \w{3} \d{4}</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?\d+:([MSC]) \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2}\.\d+ \* (.+)$</regex>
+  <order>talos_host, talos_program, talos_pod, redis_role, redis_message</order>
+</decoder>
+
+<decoder name="talos-traefik">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ traefik \S+ - -\s*(?:\xEF\xBB\xBF)?\d+\.\d+\.\d+\.\d+ - - \[</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?(\d+\.\d+\.\d+\.\d+) - - \[([^\]]+)\] "(\w+) (\S+) (HTTP\S*)" (\d+) (\d+) "-" "-" (\d+) "([^"]*)" "([^"]*)" (\d+)ms</regex>
+  <order>talos_host, talos_program, talos_pod, traefik_clientip, traefik_timestamp, traefik_method, traefik_path, traefik_httpver, traefik_status, traefik_bytes, traefik_reqcount, traefik_router, traefik_backend, traefik_duration_ms</order>
+</decoder>
+
+<decoder name="talos-argocd">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ (?:repo-server|application-controller) \S+ - -\s*(?:\xEF\xBB\xBF)?time="</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?time="([^"]+)" level=(\w+) msg=(.+)$</regex>
+  <order>talos_host, talos_program, talos_pod, argocd_timestamp, argocd_level, argocd_message</order>
+</decoder>
+
+<!-- pgbouncer: client login attempt -->
+<decoder name="talos-pgbouncer-login">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ pgbouncer \S+ - -\s*(?:\xEF\xBB\xBF)?\{.*"msg":"C-0x[0-9a-f]+: \S+ login attempt:</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?\{.*"record":\{.*"level":"(\w+)","msg":"C-0x[0-9a-f]+: ([^/\s]+)/([^@\s]+)@([^:\s]+)(?::\d+)? login attempt: .*?tls=(\S+)</regex>
+  <order>talos_host, talos_program, talos_pod, pgb_level, pgb_db, pgb_user, pgb_srcip, pgb_tls</order>
+</decoder>
+
+<!-- pgbouncer: client connection closed (includes auth failures) -->
+<decoder name="talos-pgbouncer-close">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ pgbouncer \S+ - -\s*(?:\xEF\xBB\xBF)?\{.*"msg":"C-0x[0-9a-f]+: \S+ closing because:</prematch>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s*(?:\xEF\xBB\xBF)?\{.*"record":\{.*"level":"(\w+)","msg":"C-0x[0-9a-f]+: ([^/\s]+)/([^@\s]+)@([^:\s]+)(?::\d+)? closing because: ([^(]+?) \(age=</regex>
+  <order>talos_host, talos_program, talos_pod, pgb_level, pgb_db, pgb_user, pgb_srcip, pgb_reason</order>
+</decoder>
+
+<!-- ===== PostgreSQL (CloudNativePG JSON logs) ===== -->
+<decoder name="talos-postgres-json">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <prematch type="pcre2">^\d+ \S+ \S+ postgres \S+ - -\s*(?:\xEF\xBB\xBF)?(?=\{)</prematch>
+  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
+</decoder>
+
+<!-- ===== FALLBACK: must stay LAST. Add new Talos decoders ABOVE this line ===== -->
+<decoder name="talos-syslog-fields">
+  <parent>talos-syslog</parent>
+  <use_own_name>yes</use_own_name>
+  <regex type="pcre2">^\d+ \S+ (\S+) (\S+) (\S+) - -\s?(.*)$</regex>
+  <order>talos_host, talos_program, talos_pod, talos_data</order>
+</decoder>

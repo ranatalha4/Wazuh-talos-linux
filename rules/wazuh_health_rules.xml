@@ -1,0 +1,10 @@
+<!-- Wazuh manager health rules. Install: /var/ossec/etc/rules/ -->
+<group name="local,disk,">
+  <rule id="100120" level="10" ignore="3600">
+    <if_sid>530</if_sid>
+    <match>ossec: output: 'df -P'</match>
+    <regex type="pcre2">\s(8[5-9]|9[0-9])%\s+/var/ossec$</regex>
+    <description>/var/ossec disk usage at or above 85% - ingestion at risk</description>
+    <group>disk_usage,</group>
+  </rule>
+</group>
