@@ -1,0 +1,38 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils shellcheck
+
+      - name: XML well-formedness (decoders, rules, configs)
+        run: |
+          set -e
+          for f in decoders/*.xml rules/*.xml config/*.xml; do
+            { echo '<root>'; cat "$f"; echo '</root>'; } | xmllint --noout - && echo "OK  $f"
+          done
+
+      - name: JSON validity
+        run: python3 -m json.tool config/ism-retention-policy.json > /dev/null && echo "OK  ism-retention-policy.json"
+
+      - name: Duplicate rule / decoder IDs
+        run: |
+          dup=$(grep -ohP '<rule id="\K\d+' rules/*.xml | sort | uniq -d)
+          [ -z "$dup" ] || { echo "Duplicate rule IDs: $dup"; exit 1; }
+          dup=$(grep -ohP '<decoder name="\K[^"]+' decoders/*.xml | sort | uniq -d)
+          [ -z "$dup" ] || { echo "Duplicate decoder names: $dup"; exit 1; }
+          echo "No duplicates"
+
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh
+
+      - name: Leak check (internal IPs, credentials, keys)
+        run: ./scripts/leak-check.sh

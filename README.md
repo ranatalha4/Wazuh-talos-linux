@@ -1,5 +1,9 @@
 # wazuh-talos-linux
 
+[![validate](https://github.com/ranatalha4/wazuh-talos-linux/actions/workflows/validate.yml/badge.svg)](https://github.com/ranatalha4/wazuh-talos-linux/actions/workflows/validate.yml)
+![Wazuh](https://img.shields.io/badge/Wazuh-4.14.7-005571?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
+
 Wazuh decoders, rules and field notes for monitoring **Talos Linux / Kubernetes** nodes **agentlessly over syslog**.
 
 Talos has no shell and no package manager, so the Wazuh agent can't be installed. This repo covers the syslog path instead, plus the parsing traps that make decoders fail silently.
