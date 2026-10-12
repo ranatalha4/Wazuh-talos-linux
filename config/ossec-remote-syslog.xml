@@ -1,0 +1,9 @@
+<!-- Add inside <ossec_config> in /var/ossec/etc/ossec.conf on the Wazuh Manager.
+     Replace the allowed-ips values with your Talos node subnets. -->
+<remote>
+  <connection>syslog</connection>
+  <port>514</port>
+  <protocol>tcp</protocol>
+  <allowed-ips>192.0.2.0/24</allowed-ips>     <!-- app cluster nodes -->
+  <allowed-ips>198.51.100.0/24</allowed-ips>  <!-- data cluster nodes -->
+</remote>

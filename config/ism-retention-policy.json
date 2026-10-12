@@ -1,0 +1,23 @@
+{
+  "policy": {
+    "description": "Delete Wazuh alert and archive indices after 3 days",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [],
+        "transitions": [
+          { "state_name": "delete", "conditions": { "min_index_age": "3d" } }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [ { "delete": {} } ],
+        "transitions": []
+      }
+    ],
+    "ism_template": [
+      { "index_patterns": ["wazuh-alerts-*", "wazuh-archives-*"], "priority": 100 }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+*.bak
+*.log
+archives.json
+alerts.json
+.env
